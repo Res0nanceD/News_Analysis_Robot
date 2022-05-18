@@ -1,0 +1,13 @@
+sudo apt update
+sudo apt -y upgrade
+sudo apt install -y python3-pip
+pip install display
+pip install mysql-connector-python
+pip install pymysql
+pip install pandas
+pip install yfinance
+pip install sqlalchemy
+pip install bs4
+pip install requests
+pip install selenium
+pip3 install webdriver-manager
