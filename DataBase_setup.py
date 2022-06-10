@@ -1,8 +1,8 @@
 import mysql.connector
 import yfinance as yf
-import csv
 import sqlalchemy
-from config import host, user, passwd, database_name
+from config import host, user, passwd, database_name, path_to_tickers_set
+from news_aggregator import get_tickers_set
 
 # Q for Query
 
@@ -34,7 +34,8 @@ else:
             db.cursor().execute(Q1)
             Q1 = "CREATE DATABASE " + database_name
             db.cursor().execute(Q1)
-
+    else:
+        db.close()
 
 try:
     db = mysql.connector.connect(
@@ -96,46 +97,39 @@ else:
 
 print("started loading stock market databases")
 
-path = "ticker_list"
+
+# def get_ticker_list(p):
+#     with open(p, "r") as file:
+#         reader = csv.reader(file, delimiter=",")
+#         for row in reader:
+#             return row
 
 
-def get_ticker_list(p):
-    with open(p, "r") as file:
-        reader = csv.reader(file, delimiter=",")
-        for row in reader:
-            return row
-
-
+tickers_set = get_tickers_set(path_to_tickers_set)
 try:
-    ticker_list = get_ticker_list(path)
+    engine = sqlalchemy.create_engine('mysql+mysqlconnector://{user}:{passwd}@{host}:{port}/{dbname}'.format(
+        host=host,
+        port=3306,
+        user=user,
+        passwd=passwd,
+        dbname=database_name))
+    data = yf.download(
+        tickers=tickers_set,
+        threads=True,
+        period='59d',
+        interval='5m',
+        group_by='ticker'
+    )
+    data = data.loc[:, (slice(None), 'Close')]
+    data = data.droplevel(1, axis=1)
+    data.dropna(axis=1, how="all")
+    data.to_sql(
+        name="stockMarketPrices",
+        con=engine,
+        if_exists="replace"
+    )
 except Exception as e:
+    print("Connection error in sqlalchemy engine")
     print(e)
-    print("check if the ticker_list file is located in the directory from where this program is launched")
-else:
-    try:
-        engine = sqlalchemy.create_engine('mysql+mysqlconnector://{user}:{passwd}@{host}:{port}/{dbname}'.format(
-            host=host,
-            port=3306,
-            user=user,
-            passwd=passwd,
-            dbname=database_name))
-        data = yf.download(
-            tickers=ticker_list,
-            threads=True,
-            period='59d',
-            interval='15m',
-            group_by='ticker'
-        )
-        data = data.loc[:, (slice(None), 'Close')]
-        data = data.droplevel(1, axis=1)
-        data.dropna(axis=1, how="all")
-        data.to_sql(
-            name="stockMarketPrices",
-            con=engine,
-            if_exists="replace"
-        )
-    except Exception as e:
-        print("Connection error in sqlalchemy engine")
-        print(e)
 
-from automatic_update_for_stockMarketPrices_database import *
+# from automatic_update_for_stockMarketPrices_database import *

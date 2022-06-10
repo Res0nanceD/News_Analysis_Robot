@@ -11,3 +11,5 @@ pip install bs4
 pip install requests
 pip install selenium
 pip3 install webdriver-manager
+pip install transformers
+pip3 install torch torchvision
